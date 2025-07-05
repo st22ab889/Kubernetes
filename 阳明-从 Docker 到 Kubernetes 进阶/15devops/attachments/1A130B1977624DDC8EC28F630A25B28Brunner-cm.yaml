@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: gitlab-ci-runner
+  name: gitlab-ci-runner-cm
+  namespace: kube-ops
+data:
+  REGISTER_NON_INTERACTIVE: "true"
+  REGISTER_LOCKED: "false"
+  METRICS_SERVER: "0.0.0.0:9100"
+
+  # 方式1: 这里如果使用 Gitlab 域名,但域名不是通过外网的 DNS 进行解析,就需要在"/etc/hosts"文件中映射,就需要在 Pod 启动后修改 host 文件,
+  #        目前还没找到 Pod 启动后及时修改 hosts 文件的方法,如果域名不能通过外网 DNS 解析,也不能在 host 文件中映射,Runner就不能绑定到GitLab.
+  # CI_SERVER_URL: "http://git.aaron.com/ci"
+
+  # 方式2: 这里的 IP 可以是 Gitlab service 的 CLUSTER-IP, 也可以是 Gitlab 这个 Pod 的IP, 甚至可以是外网IP和节点IP(但是要注意端口)
+  # 因为 service 和 Pod 重新部署后 IP 就发生变化,所以这里不能用.最好的方式是用 k8s 集群内部 Gitlab 的  Service DNS 地址(也就是方式3)
+  # CI_SERVER_URL: "http://10.244.189.165/ci"
+  
+  # 方式3: k8s 集群内部 Gitlab 的 Service DNS 地址,这种方式是最好的
+  CI_SERVER_URL: "http://gitlab.kube-ops.svc.cluster.local/ci"
+
+  # 如果 Gitlab 的域名是通过外网 DNS 解析,并且是默认端口(http默认80端口,https默认443端口),可以不用加此参数
+  # 如果 Gitlab 的域名是通过 host 映射访问,这里一定要加这个参数,这个参数意思"在拉取代码之前执行的特定于运行程序的命令脚本"
+  # 如果不加此参数, Runner 在跑 Job 的时候就会出现如下错误:
+  #    fatal: unable to access 'http://git.aaron.com/root/presentation-gitlab-k8s.git/': Could not resolve host: git.aaron.com
+  #    ERROR: Job failed: command terminated with exit code 1
+  # 如果 Gitlab 的域名是通过 host 映射访问,则 IP 设置的优先级为:
+  #    节点IP(必须设置为http或https默认端口) > Gitlab CLUSTER-IP(需设置为http或https默认端口) > Pod IP(也就是容器IP,并开放http或https默认端口)
+  # 这里使用 CLUSTER-IP 的方式, 这里 Gitlab Service 开放出 80 端口和 Gitlab 这个 Pod(确切说是 Pod 管理的容器) 的 80 端口进行映射。
+  RUNNER_PRE_CLONE_SCRIPT: "echo '10.111.14.238 git.aaron.com' >> /etc/hosts"
+  
+  RUNNER_REQUEST_CONCURRENCY: "4"
+  RUNNER_EXECUTOR: "kubernetes"
+  KUBERNETES_NAMESPACE: "kube-ops"
+  KUBERNETES_PRIVILEGED: "true"
+  KUBERNETES_CPU_LIMIT: "1"
+  KUBERNETES_CPU_REQUEST: "500m"
+  KUBERNETES_MEMORY_LIMIT: "1Gi"
+  KUBERNETES_SERVICE_CPU_LIMIT: "1"
+  KUBERNETES_SERVICE_MEMORY_LIMIT: "1Gi"
+  KUBERNETES_HELPER_CPU_LIMIT: "500m"
+  KUBERNETES_HELPER_MEMORY_LIMIT: "100Mi"
+  KUBERNETES_PULL_POLICY: "if-not-present"
+  KUBERNETES_TERMINATIONGRACEPERIODSECONDS: "10"
+  KUBERNETES_POLL_INTERVAL: "5"
+  KUBERNETES_POLL_TIMEOUT: "360"

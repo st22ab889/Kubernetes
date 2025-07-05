@@ -1,0 +1,15 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: test-claim
+  # K8S V1.6 之前的版本通过volume.beta.kubernetes.io/storage-class注释类请求动态供应存储
+  # annotations:
+  #   volume.beta.kubernetes.io/storage-class: "managed-nfs-storage"
+spec:
+  accessModes:
+  - ReadWriteMany
+  # 在v1.6版本之后, 用户PersistentVolumeClaim对象的storageClassName参数来请求动态存储
+  storageClassName: managed-nfs-storage
+  resources:
+    requests:
+      storage: 1Mi

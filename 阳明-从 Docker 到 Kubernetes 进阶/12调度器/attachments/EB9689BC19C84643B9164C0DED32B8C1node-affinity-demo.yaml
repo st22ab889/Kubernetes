@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: affinity
+  labels:
+    app: affinity
+spec:
+  replicas: 3
+  revisionHistoryLimit: 15
+  selector:
+    matchLabels:
+       app: affinity
+  template:
+    metadata:
+      labels:
+        app: affinity
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.7.9
+        ports:
+        - containerPort: 80
+          name: nginxweb
+      affinity:
+        # pod 亲和性
+        podAffinity:
+          # 硬策略
+          requiredDuringSchedulingIgnoredDuringExecution:
+          # 如果 nodeSelectorTerms 下⾯有多个选项的话，满⾜任何⼀个条件就可以
+          - labelSelector:
+          # 如果 matchExpressions 有多个选项的话，则必须同时满⾜这些条件才能正常调度 POD
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - busybox-pod
+            # topologyKey 是拓扑的意思,这里指的是一个拓扑域,是指一个范围的概念  
+            topologyKey: kubernetes.io/hostname
+      # 定义容忍度
+      tolerations:
+      # Exists表示只要节点有这个污点的key,pod都能容忍,值是什么都行;Equal表示只要节点必须精确匹配污点的key和value才能容忍.
+      - operator: "Exists"

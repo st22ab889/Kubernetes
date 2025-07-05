@@ -1,0 +1,10 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Release对象属于 Helm 内置的⼀种对象
+  name:  {{ .Release.Name }}-configmap
+data:
+  myvalue: "Hello World"
+  # 通过 Values 对象来获取 course 的值
+  course: {{ .Values.course }}

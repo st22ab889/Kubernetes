@@ -1,0 +1,10 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # 双括号之间的内容就是模板指令
+  # {{ .Release.Name }} 将release的名称注⼊到模板,这样最终⽣成的名称就是以release的名称开头
+  # 这⾥的Release模板对象属于 Helm 内置的⼀种对象,还有其他很多内置的对象
+  name:  {{ .Release.Name }}-configmap
+data:
+  myvalue: "Hello World"

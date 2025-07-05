@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nfs-client-provisioner
+  labels:
+    app: nfs-client-provisioner
+  # replace with namespace where provisioner is deployed
+  namespace: default
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: nfs-client-provisioner
+  template:
+    metadata:
+      labels:
+        app: nfs-client-provisioner
+    spec:
+      # 这⾥使⽤了⼀个名为 nfs-client-provisioner 的 serviceAccount,所以需要创建⼀个sa,然后绑定上对应的权限
+      # 如果不创建SA,Pod不会启动成功.可以先创建Deployment,也可以先创建SA,顺序不重要
+      serviceAccountName: nfs-client-provisioner
+      containers:
+        - name: nfs-client-provisioner
+          image: quay.io/external_storage/nfs-client-provisioner:latest
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: nfs-client-root
+              mountPath: /persistentvolumes
+          env:
+              # 注意:这里的值要和定义 StorageClass 中的 provisioner 属性的值一样 
+            - name: PROVISIONER_NAME
+              value: fuseim.pri/ifs
+              # nfs服务IP  
+            - name: NFS_SERVER
+              value: 192.168.32.100
+              # nfs共享目录根目录
+            - name: NFS_PATH
+              value: /data/k8s
+      volumes:
+        - name: nfs-client-root
+          nfs:
+            # nfs服务IP
+            server: 192.168.32.100
+            # nfs共享目录根目录
+            path: /data/k8s

@@ -1,0 +1,26 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: liveness-probe-tcpsocket-demo
+  labels:
+    app: liveness
+spec:
+  containers:
+  - name: liveness-probe-tcpsocket-demo
+    image: cnych/liveness
+    args:
+    - /server
+    #存活探针
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      initialDelaySeconds: 5
+      periodSeconds: 5  
+    #可读探针(就绪态探针),如果容器没就绪(容器可能还在进行加载文件和配件等工作)就告诉k8s不要把流量分配发过来过来.
+    readinessProbe: 
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 3
+      periodSeconds: 3

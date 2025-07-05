@@ -1,0 +1,24 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: liveness-probe-exec-demo
+  labels:
+    app: liveness
+spec:
+  containers:
+  - name: liveness-probe-exec-demo
+    image: busybox
+    args:
+    - /bin/sh
+    - -c
+    - touch /tmp/healthy; sleep 30; rm -rf /tmp/healthy; sleep 600
+    livenessProbe:
+      exec:
+        command:
+        - cat
+        - /tmp/healthy
+      #第一次执行探针先要等待5秒，这样保证容器里面的一些文件、配置等都准备好了然后每隔5秒执行一次存活探针  
+      initialDelaySeconds: 5
+      #每隔5秒执行一次liveness probe.因为30秒后就移除了"/tmp/healthy", 所以30秒后执行命令就会报错,然后容器会被杀掉重启
+      periodSeconds: 5  

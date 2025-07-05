@@ -1,0 +1,49 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress-deploy
+  namespace: blog
+  labels:
+    app: wordpress
+spec:
+  selector:
+    matchLabels:
+      app: wordpress
+  template:
+    metadata:
+      labels:
+        app: wordpress
+    spec:
+      containers:
+      - name: wordpress
+        image: wordpress
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+          name: wdport
+        env:
+        - name: WORDPRESS_DB_HOST
+          # 同一个Pod当使用localhost没有问题. 现在因为拆分了, 要通过mysql这个Service的ClusterIP和端口进行访问
+          value: 10.97.120.75:3306
+        - name: WORDPRESS_DB_USER
+          value: wordpress
+        - name: WORDPRESS_DB_PASSWORD
+          value: wordpress
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress
+  namespace: blog
+spec:
+  selector:
+    app: wordpress
+  #  NodePort 类型的 Service 才能让外网用户进行访问,这里要添加"type: NodePort",否则type的默认值是"ClusterIP"
+  type: NodePort
+  ports:
+  - name: wordpressport
+    protocol: TCP
+    port: 80
+    targetPort: wdport
+

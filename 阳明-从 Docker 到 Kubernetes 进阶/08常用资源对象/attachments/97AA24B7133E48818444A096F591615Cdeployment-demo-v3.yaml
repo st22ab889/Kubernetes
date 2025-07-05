@@ -1,0 +1,36 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-demo
+  labels:
+    app: deployment
+spec:
+  replicas: 3
+  #保留最近15个版本(设置多少根据实际需要,一般只会回滚到最近几个版本,没必要保留全部版本),一般生产环境都会设置这个参数
+  revisionHistoryLimit: 15
+  #k8s系统等待5秒后再升级
+  minReadySeconds: 5
+  #设置滚动升级策略
+  strategy:
+    #表示策略的类型是滚动升级
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: nginx       
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        # 容器端口
+        - containerPort: 80
+          #容器端口名称
+          name: nginx-web-port

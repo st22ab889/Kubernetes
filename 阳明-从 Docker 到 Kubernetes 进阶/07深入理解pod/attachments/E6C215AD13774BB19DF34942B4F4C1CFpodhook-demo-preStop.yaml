@@ -1,0 +1,27 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: podhook-demo-prestop
+  labels:
+    app: hook
+spec:
+  containers:
+  - name: podhook-demo-prestop
+    image: nginx
+    ports:
+    - name: webport
+      containerPort: 80
+    volumeMounts:
+    - name: message
+      mountPath: /usr/share
+    lifecycle:
+      preStop:
+        exec:
+# nginx优雅关闭,但是这里无法验证,所以还是使用写入文件的方式
+#          command: ["/usr/sbin/nginx", "-s", "quit"]
+          command: ["/bin/sh", "-c", "echo hello from the preStop Handler > /usr/share/message"]
+  volumes:
+  - name: message
+    hostPath:
+      path: /tmp

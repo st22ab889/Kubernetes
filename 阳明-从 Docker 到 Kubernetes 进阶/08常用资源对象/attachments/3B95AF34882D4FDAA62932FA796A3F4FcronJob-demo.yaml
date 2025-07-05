@@ -1,0 +1,27 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cronjob-demo
+spec:
+  # 每调度一次都会创建一个Job,这个表示只是保存最近2个成功的Job.不限制默认会被把每个成功的Job都保留下来
+  successfulJobsHistoryLimit: 2
+  # 设置小了出现错误不好排查.不限制会被把每个失败的Job都保留下来
+  failedJobsHistoryLimit: 10
+  # 每分钟执行
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          name: cronjob-demo
+        spec:
+          # Job不支持Always,只支持Never和OnFailure,因为Job相当于执行批处理任务,执行完就结束了.
+          restartPolicy: OnFailure
+          containers:
+          - name: counter
+            image: busybox
+            command:
+            - "bin/sh"
+            - "-c"
+            - "for i in 9 8 7 6 5 4 3 2 1 0; do echo $i; done"

@@ -1,0 +1,22 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: myservice
+  #如果匹配的Pod在其它namespace下,那service也应该定义在这个namespace下,不定义默认值是default
+  namespace: default
+spec:
+  #selector非常重要,它匹配Pod的labels.注意Deployment中Pod的labels是"spec.template.metadata.labels"
+  selector:
+    app: nginx
+  #service的类型,默认是ClusterIP的类型,ClusterIP是通过集群内部IP来暴露服务,使用这种类型只能在集群内部互相访问
+  type: ClusterIP
+  #定义Service的端口
+  ports:
+  - name: mynginx-http
+    #Service能够⽀持TCP和UDP协议,默认是TCP协议
+    protocol: TCP
+    #Service端口
+    port: 80
+    #匹配到Pod的端口(也就是容器的端口,和定于容器是的"containerPort: 80"端口相对应)
+    targetPort: 80

@@ -1,0 +1,18 @@
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-nfs
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+  - ReadWriteOnce
+  # 回收策略
+  persistentVolumeReclaimPolicy: Recycle
+  nfs:
+    # nfs服务所在的主机IP
+    server: 192.168.32.100
+    # nfs共享数据目录
+    path: /data/k8s
+    

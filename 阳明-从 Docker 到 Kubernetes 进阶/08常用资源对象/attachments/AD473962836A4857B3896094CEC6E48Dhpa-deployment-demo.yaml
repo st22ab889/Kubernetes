@@ -1,0 +1,53 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hpa-demo
+  labels:
+    app: hpa
+spec:
+  # 如果不指定replicas,默认也是1
+  replicas: 1
+  revisionHistoryLimit: 15
+  minReadySeconds: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: nginx       
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        resources:
+          # 容器请求CPU资源的值
+          requests:
+            cpu: 100m
+          # 限制容器使用CPU资源的最大值,这里演示HPA自动扩缩容,所以不不设置limit
+          # limit:
+          #  cpu: 200m
+        ports:
+        - containerPort: 80
+
+---
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: hpa-demo
+  namespace: default
+spec:
+  maxReplicas: 10
+  minReplicas: 1
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: hpa-demo
+  # 生产环境一般设置targetCPUUtilizationPercentage为90(当Pod负载达到90%才会去扩容)  
+  targetCPUUtilizationPercentage: 5

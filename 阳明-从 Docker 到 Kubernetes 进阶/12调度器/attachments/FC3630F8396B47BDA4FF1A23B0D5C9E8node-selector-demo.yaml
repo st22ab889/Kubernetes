@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: busybox-pod
+  name: test-busybox
+spec:
+  containers:
+  - command:
+    - sleep
+    - "3600"
+    image: busybox
+    imagePullPolicy: Always
+    name: test-busybox
+  nodeSelector:
+    # 把 Pod 调度到具有 demo=node02 这个标签的节点上
+    demo: node02

@@ -1,0 +1,14 @@
+auth:
+  # root用户
+  rootPassword: admin000
+  #定义database
+  database: admin_database
+  # 创建一个新用户
+  username: demo
+  password: demo000
+primary:  
+  service:
+    type: NodePort
+  #禁用数据持久化
+  persistence:
+    enabled: false

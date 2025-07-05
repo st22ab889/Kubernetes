@@ -1,0 +1,16 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: aaron-sa-rolebinding
+  namespace: kube-system
+subjects:
+- kind: ServiceAccount
+  name: aaron-sa
+  namespace: kube-system
+roleRef:
+  kind: Role
+  name: aaron-sa-role
+  apiGroup: rbac.authorization.k8s.io
+  # apiGroup也可以写一个空字符串
+  # apiGroup: ""

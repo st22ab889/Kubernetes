@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: kube-ops
+  labels:
+    app: prometheus
+spec:
+  selector:
+    app: prometheus
+  # 为了⽅便测试,这⾥创建⼀个 NodePort 类型的服务.当然也可以创建⼀个 Ingress 对象,通过域名来进⾏访问
+  type: NodePort
+  ports:
+    - name: web
+      port: 9090
+      targetPort: http

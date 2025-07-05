@@ -1,0 +1,25 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+   name: use-cm-volume-pod2
+spec:
+  containers:
+  - name: test-cm-by-volume2
+    image: busybox
+    # 这里的路径随便指定
+    command: ["/bin/sh", "-c", "cat /etc/config/path/to/mysql.conf"]
+    volumeMounts:
+    - name: config-volume
+      mountPath: /etc/config
+  # 因为volumes不属于任何一个容器,所以和containers平级.同样volume可以有多个,所以volume是个数组
+  volumes:
+  - name: config-volume
+    configMap:
+      # cm-demo3这个ConfigMap资源对象有"redis.conf"和"mysql.conf"两个文件,这两个文件都会被填入到"/etc/config"这个目录下
+      name: cm-demo3
+      items:
+      - key: mysql.conf
+        # 重新声明路径(也就是ConfigMap值被映射的数据卷⾥去控制路径)
+        path: path/to/mysql.conf
+

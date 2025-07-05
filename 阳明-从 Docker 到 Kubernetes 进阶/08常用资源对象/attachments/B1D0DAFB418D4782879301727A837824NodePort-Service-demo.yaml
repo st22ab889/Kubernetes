@@ -1,0 +1,25 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: myservice2
+  #如果匹配的Pod在其它namespace下,那service也应该定义在这个namespace下
+  namespace: default
+spec:
+  #这个selector非常重要,他会去匹配Pod的labels
+  selector:
+    app: nginx
+  type: NodePort
+  #定义Service的端口
+  ports:
+  - name: mynginx-http
+    #Service能够⽀持TCP和UDP协议,默认是TCP协议
+    protocol: TCP
+    #Service端口
+    port: 8082
+    #定义Pod的端口时如果指定了端口名称,这里可以指定端口名称,对应容器的".spec.containers.ports.name"字段 
+    targetPort: nginx-web-port
+    #指定node端口,集群当中所有的node节点都会分配出指定的这个端口,所以每个node节点都能从这个端口代理到Service
+    #如果type是NodePort,不指定nodePort也会自动生成一个随机端口,随机端口的默认范围是"30000-32767",这个范围在安装集群的时候可以配置
+    #假如现在有三个节点,这三个节点都会开31199端口,每个节点都可以通过31199端口路由到这个Service上面来
+    nodePort: 31199

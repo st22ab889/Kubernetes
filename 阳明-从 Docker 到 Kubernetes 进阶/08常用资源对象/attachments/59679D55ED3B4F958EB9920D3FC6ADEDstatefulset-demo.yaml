@@ -1,0 +1,62 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+spec:
+  ports:
+  - port: 80
+    name: nginx-service-port
+  # 把clusterIP设置为None,这就是一个Headless Service类型的服务
+  clusterIP: None
+  selector:
+    # 必须要满足下面两个label,才能匹配到这个service中
+    app: nginx
+    role: statefulset
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+spec:
+  # 这里的值和上面定义的Service的name的值一样
+  serviceName: nginx
+  replicas: 2
+  selector:
+    matchLabels:
+       app: nginx
+       role: statefulset
+  template:
+    metadata:
+      labels:
+        # 这里必须要写下面两个label才能匹配到上面的Service中
+        app: nginx
+        role: statefulset
+    spec:
+      containers:
+      - name: nginx
+        # 这里不直接使用nginx镜像,因为要利用这个镜像里面的一些命令来做些事情，原生的nginx1.7.9里面有些命令没有，所以使用这个镜像
+        image: cnych/nginx-slim:0.8
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+          name: nginx-pod-port
+        volumeMounts:
+        - name: nginx-path
+          mountPath: /usr/share/nginx/html
+  # volumeClaimTemplates相当于PVC声明的模板,这个属性它会自动声明一个PVC对象，然后和上面创建的PV关联
+  # volumeClaimTemplates 和 template 在同一级,这个模板实际上就是volumeClaim的一个模板
+  volumeClaimTemplates:
+  - metadata:
+      # 这里的name的值要和volumeMounts的name一致，相当于是对volumeMounts进行声明
+      # 把"nginx-path"这个volumeMounts和PVC进行了关联, PVC又和PV进行关联, PV也会自动去匹配，有可能匹配到pv001，也有可能匹配到pv002
+      name: nginx-path
+    spec:
+      # 和PV中定义的 accessModes 中保持一致
+      accessModes: [ "ReadWriteOnce" ]
+      # 资源 
+      resources:
+        # 请求存储空间
+        requests:
+          # 一个PVC只能和一个PV进行绑定
+          storage: 1Gi

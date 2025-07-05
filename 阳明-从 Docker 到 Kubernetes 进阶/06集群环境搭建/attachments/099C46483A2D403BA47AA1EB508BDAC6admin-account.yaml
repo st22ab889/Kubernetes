@@ -1,0 +1,31 @@
+
+#admin-account.yaml
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: admin
+  namespace: kubernetes-dashboard
+
+#如果下面要继续写,用"---"表示区分，说明上下是两块
+---
+
+#给admin绑定一个角色
+apiVersion: rbac.authorization.k8s.io/v1
+#RoleBinding是和命名空间相关的,但是如果要访问所有资源对象权限,所以这个地方应该使用ClusterRoleBinding, 它和namespace是没有关系的,它管理整个集群
+#kind: RoleBinding
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin	# cluster-admin是k8s集群内置的集群角色,所以不需要去声明角色权限,所以这里不能改成其它名字，cluster-admin的权限是非常高的
+subjects:
+  - kind: ServiceAccount
+    name: admin
+    namespace: kubernetes-dashboard

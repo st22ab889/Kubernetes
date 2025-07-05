@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+   name: cm-demo1
+# 配置数据   
+data:
+  # 保存单个属性
+  data.1: hello
+  data.2: world
+  # 保存配置文件, config就相当于这个配置文件的文件名称
+  config: |
+    property.1=value-1
+    property.2=value-2
+    property.3=value-3

@@ -1,0 +1,13 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:   
+  name: ingress-traefik
+  labels:
+    name: ingress-traefik
+
+# 使用命令创建
+# kubectl create namespace ingress-traefik
+
+# 查看命名空间
+# kubectl get namespaces

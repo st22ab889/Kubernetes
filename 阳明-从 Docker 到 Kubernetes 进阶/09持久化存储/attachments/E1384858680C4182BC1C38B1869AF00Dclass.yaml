@@ -1,0 +1,11 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: managed-nfs-storage
+# provisioner 属性的值要和Deployment中定义的PROVISIONER_NAME环境变量值一样
+# or choose another name, must match deployment's env PROVISIONER_NAME'
+provisioner: fuseim.pri/ifs
+parameters:
+  # 如果storageClass对象中指定archiveOnDelete参数并且值为false,则会自动删除oldPath下的所有数据,即pod对应的数据持久化存储数据
+  # 如果storageClass对象中没有指定archiveOnDelete参数或者值为true,表明需要删除时存档,即将oldPath重命名,命名格式为oldPath前面增加"archived-"的前缀
+  archiveOnDelete: "true"

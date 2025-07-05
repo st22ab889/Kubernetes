@@ -1,0 +1,107 @@
+node("hello-ops"){
+    stage('Clone') {
+        echo "1.Clone Stage"
+        git url: "https://github.com/st22ab889/jenkins-demo.git"
+        
+        // 由于这个tag会在多个stage需要使⽤,下⼀个推送镜像也需要,所以这⾥把这个tag编写成⼀个公共的参数放在Clone这个stage中
+        script {
+            env.BRANCH_NAME = "master"
+            // returnStdout表示在命令行终端执行完成后把它输出的内容给返回回来
+            build_tag = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
+            if ("${env.BRANCH_NAME}" != 'master') {
+                build_tag = "${env.BRANCH_NAME}-${build_tag}"
+            }            
+        }
+    }
+
+    stage('Test') {
+        echo "2.Test Stage"
+    }
+
+    // 因为Agent Pod的镜像⾥⾯采⽤了DockerInDocker的⽅式,也就是说可以直接在Agent中使⽤docker build,所以这⾥直接使⽤sh执⾏docker build命令即可
+    // 如果使⽤镜像tag,则每次都是latest的tag,这对于以后的排查或者回滚之类的⼯作会带来很⼤麻烦
+    // 这⾥采⽤git commit的记录为镜像的tag,这⾥好处就是镜像的tag可以和git提交记录对应起来,⽅便⽇后对应查看
+    stage('Build') {
+        echo "3.Build Docker Image Stage"
+        sh "docker build -t st22ab889/jenkins-demo:${build_tag} ."
+    }
+
+    // 镜像构建完成后,就需要将构建的镜像推送到私有镜像仓库, 如果没有⾃⼰搭建私有的仓库,也可以直接使⽤ docker hub
+    stage('Push') {
+        echo "4.Push Docker Image Stage"
+        // docker hub是公共的镜像仓库,任何⼈都可以获取上⾯的镜像,但是要推送镜像就需要帐号,使⽤docker login命令登录认证后才能推送镜像到docker hub
+        // 如果只是在 Jenkins 的 Web UI 界⾯中来完成这个任务,这⾥的 Pipeline 可以这样写
+        // 但是推荐使⽤ Jenkinsfile 的形式放⼊源码中进⾏版本管理,这样的话直接把docker仓库的⽤户名和密码暴露给别⼈,显然很不安全
+        // 而且这⾥使⽤的是github的公共代码仓库，所有⼈都可以直接看到源码
+        
+        // sh "docker login -u st22ab889 -p st22ab889"
+        // sh "docker push st22ab889/jenkins-demo:${build_tag}"
+
+        // Jenkins提供了解决⽅法,无须显示的写出用户名和密码
+        // 首页 -> 系统管理 -> Manage Credentials -> Jenkins -> 全局凭据 (unrestricted) -> 添加凭据 -> 填写如下:
+        //      类型: Username with password
+        //      范围: 全局
+        //      用户名: st22ab889
+        //      密码: st22ab889
+        //      id: docekrAuth
+        
+        // 这⾥的 stage 中使⽤了⼀个新的函数withCredentials，credentialsId 值就是我们添加全局凭据中填写的ID值
+        // 这样在脚本中就直接使⽤这⾥两个变量值替换掉⽤户名和密码,这样就很安全了
+        withCredentials([usernamePassword(credentialsId: 'docekrAuth', passwordVariable: 'dockerPassword', usernameVariable: 'dockerUser')]) {
+            sh "docker login -u ${dockerUser} -p ${dockerPassword}"
+            sh "docker push st22ab889/jenkins-demo:${build_tag}"
+        }
+
+        // 后⾯使用 Harbor 的搭建私有仓库后, 再来更改成 Harbor 仓库
+    }
+
+    // 完成镜像的打包、推送⼯作后,接下来更新k8s系统中应⽤的镜像版本,为了⽅便维护,都是⽤ YAML ⽂件的形式来编写应⽤部署规则
+    stage('YAML') {
+        echo "5. Change YAML File Stage"
+        
+        // ⼈⼯确认:这⾥使⽤了input关键字,⾥⾯使⽤了⼀个 Choice 的列表来让⽤户进⾏选择
+        def userInput = input(
+            id: 'userInput',
+            message: 'Choose a deploy environment',
+            parameters: [
+                [
+                    $class: 'ChoiceParameterDefinition',
+                    choices: "Dev\nQA\nProd",
+                    name: 'Env'
+                 ]
+            ]
+        )
+        // 在选择了部署环境后,当然也可以针对不同的环境再做⼀些操作，⽐如可以给不同环境的 YAML ⽂件部署到不同的namespace下⾯去,增加不同的标签等操作
+        echo "This is a deploy step to ${userInput} Env"
+        
+        // sed命令就是将 k8s-jenkins-go-demo.yaml ⽂件中的<BUILD_TAG>标识给替换成变量 build_tag 的值
+        sh "sed -i 's/<BUILD_TAG>/${build_tag}/' k8s-jenkins-go-demo.yaml"
+    }
+
+    stage('Deploy') {
+        echo "6. Deploy Stage"
+        // ⼿动的环境下直接使⽤ kubectl apply 命令可以直接更新应⽤,这⾥只是写⼊到了 Pipeline ⾥⾯,思路都是⼀样的, 到这⾥我们的整个流程就算完成了
+        // sh "kubectl apply -f k8s-jenkins-go-demo.yaml"
+
+        // 添加"⼈⼯确认"环节
+        // 上⾯的6个步骤其实已经完成了整个流程. 但是⼀般在实际项⽬实践过程中,可能还需要⼀些⼈⼯⼲预的步骤
+        // ⽐如提交了⼀次代码,测试也通过了,镜像也打包上传了,但是这个版本并不⼀定就是要⽴刻上线到⽣产环境
+        // 可能需要将该版本先发布到测试环境、QA 环境、或者预览环境之类的,总之直接就发布到线上环境去还是挺少⻅的,所以需要增加⼈⼯确认环节
+        // ⼀般都是在 CD 的环节才需要⼈⼯⼲预,⽐如这⾥的最后两步,就可以在前⾯加上确认,如下：
+
+        if (userInput == "Dev") {
+            input "please confirm deploy to DEV env ?"
+        } else if (userInput == "QA"){
+            input "please confirm deploy to QA env ?"
+        } else {
+             input "please confirm deploy to Prod env ?"
+        }
+        sh "sed -i 's/<BRANCH_NAME>/${env.BRANCH_NAME}/' k8s.yaml"
+
+        sh "cat k8s-jenkins-go-demo.yaml"
+        // 加上 --record 参数在做滚动更新的时候会留下一个记录,方便排查问题
+        sh "kubectl apply -f k8s-jenkins-go-demo.yaml --record"
+
+        // 因为最后两步( stage('YAML')和stage('Deploy') )都属于部署的范畴,所以可以将最后两步都合并成⼀步
+    }
+}

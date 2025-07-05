@@ -1,0 +1,20 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+# 因为Role和用户都指定了namespace,所以使用RoleBinding
+kind: RoleBinding
+metadata:
+  name: aaron-rolebinding
+  # 这里namespace要和Role的namespace一样,否则匹配不上
+  namespace: kube-system
+# 操作集群的对象,也就是用户
+subjects:
+- kind: User
+  # 用户 绑定下面指定的"aaron-role"角色
+  name: aaron
+  apiGroup: ""
+# 操作集群的对象 引用一个角色 来进行绑定
+roleRef:
+  kind: Role
+  # 角色 被上面指定的用户"aaron"绑定
+  name: aaron-role
+  apiGroup: ""

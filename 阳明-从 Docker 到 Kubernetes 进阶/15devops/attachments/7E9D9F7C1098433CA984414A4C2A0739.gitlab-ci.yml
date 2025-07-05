@@ -1,0 +1,142 @@
+image:
+  name: golang:1.10.3-stretch
+  entrypoint: ["/bin/sh", "-c"]
+
+# The problem is that to be able to use go get, one needs to put
+# the repository in the $GOPATH. So for example if your gitlab domain
+# is mydomainperso.com, and that your repository is repos/projectname, and
+# the default GOPATH being /go, then you'd need to have your
+# repository in /go/src/mydomainperso.com/repos/projectname
+# Thus, making a symbolic link corrects this.
+before_script:
+  - mkdir -p "/go/src/git.aaron.com/${CI_PROJECT_NAMESPACE}"
+  - ln -sf "${CI_PROJECT_DIR}" "/go/src/git.aaron.com/${CI_PROJECT_PATH}"
+  - cd "/go/src/git.aaron.com/${CI_PROJECT_PATH}/"
+
+stages:
+  - test
+  - build
+  - release
+  - review
+  - deploy
+
+# 这里 test 代表Job, 这里意思是 test 属于 test 阶段的 Job 
+test:
+  stage: test
+  script:
+    - make test
+
+test2:
+  stage: test
+  script:
+    - sleep 3
+    - echo "We did it! Something else runs in parallel!"
+
+# 这里 compile 代表Job, 这里意思是 compile 属于 build 阶段的 Job 
+compile:
+  stage: build
+  script:
+    # Add here all the dependencies, or use glide/govendor/...
+    # to get them automatically.
+    - make build
+  artifacts:
+    paths:
+      - app
+
+image_build:
+  stage: release
+  image: docker:latest
+  # Docker in Docker原理是: 容器内仅部署 docker 命令行工具(作为客户端)，实际命令交由宿主机内的 docker-engine(服务器)
+  # 修改 docker 启动参数原理: docker 命令行工具通过 tcp://localhost:2375 连接到 docker-engine, 发送修改参数的指令给 docker-engine
+  variables:
+    DOCKER_DRIVER: overlay
+    DOCKER_HOST: tcp://localhost:2375
+  # dind 是 Docker in Docker 的缩写, dind官方仓库地址为: https://hub.docker.com/_/docker?tab=tags
+  services:
+    - name: docker:17.03-dind
+      #因为这里使用 docker hub, 所以不需要在 docker 启动参数上加 --insecure-registry, 私有仓库可能会加.
+      #command: ["--insecure-registry=registry.aaron.com"]
+  script:
+    - docker info
+    
+    # 这种方式登录不安全, 因为会把密码打印到 shell 日志上.
+    #- docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" registry.aaron.com
+    
+    # 也可以将仓库地址设置为一个变量, 以参数的形式配置到 GitLab 环境中.
+    #docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+    
+    # 这里仍然使用 docker hub 作为镜像仓库,如果使用私有仓库,需要在后面加上私有仓库地址.
+    - echo "${CI_REGISTRY_PASSWORD}" | docker login --username ${CI_REGISTRY_USER} --password-stdin
+    
+    - docker build -t "${CI_REGISTRY_IMAGE}:latest" .
+    - docker tag "${CI_REGISTRY_IMAGE}:latest" "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_NAME}"
+    - test ! -z "${CI_COMMIT_TAG}" && docker push "${CI_REGISTRY_IMAGE}:latest"
+    - docker push "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_NAME}"
+
+deploy_review:
+  image: st22ab889/kubectl:1.22.1-0
+  stage: review
+  only:
+    - branches
+  except:
+    - tags
+  environment:
+    # 这里指定 CI 环境, 一般有 dev、uat、prod 三种环境
+    name: dev
+    url: http://dev-gitlab-k8s-demo.aaron.com:31293
+    on_stop: stop_review
+  script:
+    - kubectl version
+    - cd manifests/
+    - sed -i "s/__CI_ENVIRONMENT_SLUG__/${CI_ENVIRONMENT_SLUG}/" deployment.yaml ingress.yaml service.yaml
+    - sed -i "s/__VERSION__/${CI_COMMIT_REF_NAME}/" deployment.yaml ingress.yaml service.yaml
+    - |
+      if kubectl apply -f deployment.yaml | grep -q unchanged; then
+          echo "=> Patching deployment to force image update."
+          kubectl patch -f deployment.yaml -p "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"ci-last-updated\":\"$(date +'%s')\"}}}}}"
+      else
+          echo "=> Deployment apply has changed the object, no need to force image update."
+      fi
+    - kubectl apply -f service.yaml || true
+    - kubectl apply -f ingress.yaml
+    - kubectl rollout status -f deployment.yaml
+    - kubectl get all,ing -l ref=${CI_ENVIRONMENT_SLUG}
+
+stop_review:
+  image: st22ab889/kubectl:1.22.1-0
+  stage: review
+  variables:
+    GIT_STRATEGY: none
+  when: manual
+  only:
+    - branches
+  except:
+    - master
+    - tags
+  environment:
+    name: dev
+    action: stop
+  script:
+    - kubectl version
+    - kubectl delete ing -l ref=${CI_ENVIRONMENT_SLUG}
+    - kubectl delete all -l ref=${CI_ENVIRONMENT_SLUG}
+
+deploy_live:
+  image: st22ab889/kubectl:1.22.1-0
+  stage: deploy
+  environment:
+    name: live
+    url: http://live-gitlab-k8s-demo.aaron.com:31293
+  only:
+    - tags
+  when: manual
+  script:
+    - kubectl version
+    - cd manifests/
+    - sed -i "s/__CI_ENVIRONMENT_SLUG__/${CI_ENVIRONMENT_SLUG}/" deployment.yaml ingress.yaml service.yaml
+    - sed -i "s/__VERSION__/${CI_COMMIT_REF_NAME}/" deployment.yaml ingress.yaml service.yaml
+    - kubectl apply -f deployment.yaml
+    - kubectl apply -f service.yaml
+    - kubectl apply -f ingress.yaml
+    - kubectl rollout status -f deployment.yaml
+    - kubectl get all,ing -l ref=${CI_ENVIRONMENT_SLUG}

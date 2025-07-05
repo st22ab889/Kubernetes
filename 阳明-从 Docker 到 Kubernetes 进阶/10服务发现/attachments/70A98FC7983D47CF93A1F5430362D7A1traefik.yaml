@@ -1,0 +1,81 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  namespace: kube-system
+  name: traefik
+  labels:
+    app: traefik
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: traefik
+  template:
+    metadata:
+      labels:
+        app: traefik
+    spec:
+      serviceAccountName: traefik-ingress-controller
+      # terminationGracePeriodSeconds 定义优雅关闭的宽限期,即在收到停止请求后有多少时间来进行资源释放或其它操作.如果到了最大时间还没有停止会被强制结束.默认值为30
+      terminationGracePeriodSeconds: 60
+      # 如果边缘节点不在centos7.master上,就没必要加上nodeSelector和tolerations
+      # 定义容忍度
+      tolerations:
+      - operator: "Exists"  # Exists表示只要节点有这个污点的key,pod都能容忍,值是什么都行;Equal表示只要节点必须精确匹配污点的key和value才能容忍.
+      #  key: "node-type"
+      # 将Pod调度到期望的节点上
+      nodeSelector:
+        # 将Pod调度到 centos7.master 这个节点上, 当然也可以给centos7.master节点打一个唯一的标签,然后选择上就行
+        kubernetes.io/hostname: centos7.master
+      containers:
+        - name: traefik
+          imagePullPolicy: IfNotPresent
+          image: traefik:v2.5
+          # args是traefik的启动参数
+          args:
+            - --api.insecure
+            - --accesslog
+            - --entrypoints.web.Address=:8000
+            - --entrypoints.websecure.Address=:4443
+            - --providers.kubernetesingress
+            # - --providers.kubernetescrd
+            # - --certificatesresolvers.myresolver.acme.tlschallenge
+            # - --certificatesresolvers.myresolver.acme.email=foo@you.com
+            # - --certificatesresolvers.myresolver.acme.storage=acme.json
+            # Please note that this is the staging Let's Encrypt server.
+            # Once you get things working, you should remove that whole line altogether.
+            # - --certificatesresolvers.myresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
+          ports:
+            # traefik的dashboard界面
+            - name: web
+              containerPort: 8000
+            - name: websecure
+              containerPort: 4443
+            - name: admin
+              containerPort: 8080
+              # hostPort 可以把容器端⼝直接映射到节点上的80端⼝
+              # hostPort: 80
+              
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  # type: LoadBalancer
+  # 使用NodePort主要是为了演示traefik的dashboard使用方法,因为现在没有创建ingress对象,所以暂时用Nodeport来演示
+  type: NodePort
+  ports:
+    - protocol: TCP
+      name: web
+      port: 8000
+    - protocol: TCP
+      name: admin
+      port: 8080
+    - protocol: TCP
+      name: websecure
+      port: 4443
+  selector:
+    app: traefik

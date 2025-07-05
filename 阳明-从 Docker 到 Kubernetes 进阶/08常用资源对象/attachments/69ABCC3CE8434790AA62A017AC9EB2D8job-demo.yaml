@@ -1,0 +1,19 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-demo
+spec:
+  template:
+    metadata:
+      name: job-demo
+    spec:
+      # Job不支持Always,只支持Never和OnFailure,因为Job相当于执行批处理任务,执行完就结束了.
+      restartPolicy: Never
+      containers:
+      - name: counter
+        image: busybox
+        command:
+        - "bin/sh"
+        - "-c"
+        - "for i in 9 8 7 6 5 4 3 2 1 0; do echo $i; done"

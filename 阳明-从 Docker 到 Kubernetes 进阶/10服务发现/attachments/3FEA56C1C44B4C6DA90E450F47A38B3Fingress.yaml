@@ -1,0 +1,42 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: traefik-lb
+  namespace: ingress-traefik
+spec:
+  # 表示使用traefik做Ingress的Ingress controller
+  controller: traefik.io/ingress-controller
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: myingress
+  namespace: ingress-traefik
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  # 这里不设置 ingressClassName ,似乎对本例也没什么影响
+  ingressClassName: traefik-lb
+  rules:
+    - host: aaron.traefik.com
+      http:
+        paths:
+          - path: /
+            pathType: Exact
+            backend:
+              service:
+                name: traefik
+                port:
+                  number: 8080
+    - host: aaron.nginx.com
+      http:
+        paths:
+          - path: /
+            pathType: Exact
+            backend:
+              service:
+                name: mynginx
+                port:
+                  number: 80

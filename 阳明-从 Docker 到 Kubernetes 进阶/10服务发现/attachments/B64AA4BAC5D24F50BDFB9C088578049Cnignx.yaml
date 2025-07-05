@@ -1,0 +1,46 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: ingress-traefik
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        imagePullPolicy: IfNotPresent
+        image: nginx:1.7.9
+        ports:
+        - containerPort: 80
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mynginx
+  #如果匹配的Pod在其它namespace下,那service也应该定义在这个namespace下,不定义默认值是default
+  namespace: ingress-traefik
+spec:
+  #selector非常重要,它匹配Pod的labels.注意Deployment中Pod的labels是"spec.template.metadata.labels"
+  selector:
+    app: nginx
+  # type: ClusterIP
+  type: LoadBalancer
+  ports:
+  - name: mynginx-http
+    #Service能够⽀持TCP和UDP协议,默认是TCP协议
+    protocol: TCP
+    #Service端口
+    port: 80
+    #匹配到Pod的端口(也就是容器的端口,和定于容器是的"containerPort: 80"端口相对应)
+    targetPort: 80

@@ -1,0 +1,32 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: traefik-lb
+  namespace: kube-system
+spec:
+  # 表示使用traefik做Ingress的Ingress controller
+  controller: traefik.io/ingress-controller
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: myingress
+  namespace: kube-system
+spec:
+  ingressClassName: traefik-lb
+  rules:
+    - host: aaron.traefik.com
+      http:
+        paths:
+          - path: /
+            pathType: Exact
+            backend:
+              service:
+                # 这里就是要访问的ServiceName
+                name: traefik
+                port:
+                  # 这里就是service对应的端口
+                  number: 8080
+                  # 为了避免端⼝更改,这⾥的number的值也可以替换成service定义的port的名字 admin
+                  # number: admin

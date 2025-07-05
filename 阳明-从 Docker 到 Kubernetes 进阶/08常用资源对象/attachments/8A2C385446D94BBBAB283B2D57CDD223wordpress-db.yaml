@@ -1,0 +1,67 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deploy
+  namespace: blog
+  # 这个labels作用的对象是Deployment
+  labels:
+    app: mysql
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  # template就是定义Pod的模板
+  template:
+    metadata:
+      # 这里指定Pod的name不起作用,因为使用Deployment管理的Pod,它会自动创建Pod名称,格式是"[Deployment的名称]-[随机字符串]"
+      labels:
+        #  这个labels作用的对象是Pod
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:5.7
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3306
+          name: dbport
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: rootPassWord
+        - name: MYSQL_DATABASE
+          value: wordpress
+        - name: MYSQL_USER
+          value: wordpress
+        - name: MYSQL_PASSWORD
+          value: wordpress
+        volumeMounts:
+          - name: db
+            mountPath: /var/lib/mysql
+      # volumes和containers同级,因为volumes针对Pod里面的所有容器,所有容器都有可能存在挂载数据卷，所以同级是为了统一说明它们的挂载方式
+      volumes:
+        - name: db
+          hostPath:
+            path: /var/lib/mysql
+
+# 如果 wordpress 和 mysql 在同一个Pod中可以通过 localhost 来进⾏访问
+# 这里可以通过给Deployment创建Service来让 Wordpress 来访问.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: blog
+spec:
+  selector:
+    app: mysql
+  #service的类型,默认是ClusterIP的类型,ClusterIP是通过集群内部IP来暴露服务,使用这种类型只能在集群内部互相访问
+  type: ClusterIP  
+  ports:
+  - name: mysqlport
+    protocol: TCP
+    port: 3306
+    # 这里使用容器端口的名称是为了解决以下两个问题:
+    # 假如端口号之后发生改变,只要名称没有变,这里不用作任何变更
+    # 假如还有个服务也具有"app: mysql"这个labels,也会关联到Service,但有可能它的端口不是3306,这里直接写3306就出现了问题,写名称就能避免这种问题
+    targetPort: dbport

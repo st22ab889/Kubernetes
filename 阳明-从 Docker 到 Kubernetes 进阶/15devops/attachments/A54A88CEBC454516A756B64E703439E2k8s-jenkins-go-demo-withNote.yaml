@@ -1,0 +1,26 @@
+# 使⽤⼀个 Deployment 资源对象来管理 Pod，该 Pod 使⽤的就是推送到 docker hub 的镜像
+# 需要注意的是Docker镜像的tag不是平常⻅的具体的tag，⽽是⼀个的标识
+# 这里的标识在jenkins的pipeline脚本中使用sed命令替换成Docker镜像的tag,就是最终本次构建需要使⽤到的镜像
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jenkins-demo
+  # 这里如果不指定命名空间,就会默认使用jenkins agent这个Pod创建时使用的命名空间
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: jenkins-demo    
+  template:
+    metadata:
+      labels:
+        app: jenkins-demo
+    spec:
+      containers:
+      - image: st22ab889/jenkins-demo:<BUILD_TAG>
+        imagePullPolicy: IfNotPresent
+        name: jenkins-demo
+        env:
+        - name: branch
+          value: <BRANCH_NAME>

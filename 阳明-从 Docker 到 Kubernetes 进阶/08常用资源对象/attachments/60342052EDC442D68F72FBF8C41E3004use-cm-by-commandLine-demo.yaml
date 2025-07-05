@@ -1,0 +1,25 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+   name: use-cm-command-line-pod
+spec:
+  containers:
+  - name: test-cm-by-command-line
+    image: busybox
+    # 通过命令行参数的形式来使用ConfigMap里面的值
+    command: ["/bin/sh", "-c", "echo $(DB_HOST) $(DB_PORT)"]
+    # 申明环境变量
+    env:
+    - name: DB_HOST
+      # 环境变量值的来源 
+      valueFrom:
+        # 指定引用(ConfigMap资源对象的名称)从ConfigMap中获取环境变量,然后再通过key获取到值,这个值就是DB_HOST的值
+        configMapKeyRef:
+          name: cm-demo4
+          key: db.host
+    - name: DB_PORT
+      valueFrom:
+        configMapKeyRef:
+          name: cm-demo4
+          key: db.port

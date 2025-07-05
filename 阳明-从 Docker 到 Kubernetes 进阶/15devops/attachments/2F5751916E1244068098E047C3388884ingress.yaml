@@ -1,0 +1,21 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gitlab-k8s-demo-__CI_ENVIRONMENT_SLUG__
+  namespace: gitlab
+  labels:
+    app: gitlab-k8s-demo
+    ref: __CI_ENVIRONMENT_SLUG__
+spec:
+  rules:
+  - host: __CI_ENVIRONMENT_SLUG__-gitlab-k8s-demo.aaron.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: gitlab-k8s-demo-__CI_ENVIRONMENT_SLUG__
+            port:
+              number: 8000

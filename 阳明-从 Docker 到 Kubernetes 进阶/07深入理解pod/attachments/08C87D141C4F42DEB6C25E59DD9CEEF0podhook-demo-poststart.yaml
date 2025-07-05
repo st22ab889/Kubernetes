@@ -1,0 +1,18 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: podhook-demo-poststart
+  labels:
+    app: hook-poststart
+spec:
+  containers:
+  - name: podhook-demo-poststart
+    image: nginx
+    ports:
+    - name: webport
+      containerPort: 80
+    lifecycle:
+      postStart:
+        exec:
+          command: ["/bin/sh", "-c", "echo hello from the postStart Handler > /usr/share/message"]

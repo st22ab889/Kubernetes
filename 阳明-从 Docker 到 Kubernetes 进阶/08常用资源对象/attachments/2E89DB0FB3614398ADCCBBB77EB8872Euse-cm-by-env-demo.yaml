@@ -1,0 +1,29 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+   name: use-cm-env-pod
+spec:
+  containers:
+  - name: test-cm-by-env
+    image: busybox
+    # 打印环境变量的值,这里的"env"指的是下面声明的env
+    command: ["/bin/sh", "-c", "env"]
+    # 申明环境变量
+    env:
+    - name: DB_HOST
+      # 环境变量值的来源 
+      valueFrom:
+        # 指定引用(ConfigMap资源对象的名称)从ConfigMap中获取环境变量,然后再通过key获取到值,这个值就是DB_HOST的值
+        configMapKeyRef:
+          name: cm-demo4
+          key: db.host
+    - name: DB_PORT
+      valueFrom:
+        configMapKeyRef:
+          name: cm-demo4
+          key: db.port
+    # 也可以通过"envFrom"给容器注入环境变量
+    envFrom:
+    - configMapRef:
+        name: cm-demo2

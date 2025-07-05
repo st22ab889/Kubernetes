@@ -1,0 +1,4 @@
+primary:  
+  service:
+    # 把 Service 的类型升级为 LoadBalancer
+    type: LoadBalancer

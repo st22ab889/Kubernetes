@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: affinity
+  labels:
+    app: affinity
+spec:
+  replicas: 3
+  revisionHistoryLimit: 15
+  selector:
+    matchLabels:
+       app: affinity
+  template:
+    metadata:
+      labels:
+        app: affinity
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.7.9
+        ports:
+        - containerPort: 80
+          name: nginxweb
+      affinity:
+        nodeAffinity:
+          # 硬策略
+          requiredDuringSchedulingIgnoredDuringExecution:
+            # 如果 nodeSelectorTerms 下⾯有多个选项的话，满⾜任何⼀个条件就可以
+            nodeSelectorTerms:
+            # 如果 matchExpressions 有多个选项的话，则必须同时满⾜这些条件才能正常调度 POD
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - node03
+          # 软策略
+          preferredDuringSchedulingIgnoredDuringExecution: 
+          - weight: 1
+            preference:
+              matchExpressions:
+              - key: demo
+                operator: In
+                values:
+                - node02

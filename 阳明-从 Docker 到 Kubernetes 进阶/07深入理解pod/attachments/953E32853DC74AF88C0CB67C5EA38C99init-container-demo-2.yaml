@@ -1,0 +1,38 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: init-containers-demo-2
+  labels:
+    app: init
+spec:
+  initContainers:
+  - name: install-config
+    image: busybox
+    command: 
+    - wget
+    # -o 相当于 --output-file=FILE , "-o"(小写)将日志信息写入FILE
+    # -O 相当于 --output-document=FILE , "-O"(大写)将文档写入 FILE
+    - "-O"
+    - "/work-dir/index.html"
+    - http://www.baidu.com
+    volumeMounts:
+    - name: workdir
+      mountPath: /work-dir
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - containerPort: 80
+    # volumeMounts是将指定的卷放到容器指定的位置上面去
+    volumeMounts:
+    - name: workdir
+      mountPath: /usr/share/nginx/html
+  # volumes指的是POD中的一个卷
+  volumes:
+  - name: workdir
+    #这里用hostPath也可以挂载到宿主机上面去
+    #emptyDir是个临时的共享卷,它的生命周期和POD的生命周期一样,如果pod重启了,emptyDir中之前的内容也没了
+    #当初始化容器(install-config)启动后,会下载一个html文件，然后映射到emptyDir中去
+    #把index.html看成一个配置文件,就相当于实现了使用初始化容器改变主容器中的配置文件
+    emptyDir: {}

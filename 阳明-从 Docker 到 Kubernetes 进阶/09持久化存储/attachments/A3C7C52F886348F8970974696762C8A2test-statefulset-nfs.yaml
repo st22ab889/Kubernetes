@@ -1,0 +1,45 @@
+---
+apiVersion:  apps/v1
+kind: StatefulSet
+metadata:
+  name: statefulset-sc
+spec:
+  # 一般来说，StatefulSet类型的服务不会简单直接的把副本设置成多个
+  # 因为每个有状态的Pod下面它们的工作方式不尽相同
+  # 比如说是个Mysql,不是简单的把mysql复制三份底层的数据就可以共享
+  replicas: 3
+  serviceName: nginx
+  selector:
+    matchLabels:
+       app: statefulset-pod
+  template:
+    metadata:
+      labels:
+        app: statefulset-pod
+    spec:
+      # 在规定的terminationGracePeriodSeconds优雅时间内(默认30s)未能终止pod容器,则发送SIGKILL信号强制终止
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: nginx
+        image: nginx:1.7.9
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+          name: nginx-port
+        volumeMounts:
+        - name: nginx-volume
+          mountPath: /usr/share/nginx/html
+  # 注意: volumeClaimTemplates 是 StatefulSet.sepc 下面的属性
+  # volumeClaimTemplates下⾯就是⼀个PVC对象的模板,⽤这种模板就可以动态的去创建对象
+  # 这⾥是⼿动创建的⼀个 PVC 对象,StorageClass会自动创建PV,而不会自动创建PVC
+  volumeClaimTemplates:
+  - metadata:
+      name: nginx-volume
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      # 使用 managed-nfs-storage 这个 StorageClass 自动创建PV
+      storageClassName: managed-nfs-storage  
+      resources:
+        requests:
+          storage: 1Gi
+          

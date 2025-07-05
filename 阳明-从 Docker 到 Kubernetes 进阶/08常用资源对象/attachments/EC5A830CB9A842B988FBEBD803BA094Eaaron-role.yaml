@@ -1,0 +1,19 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: aaron-role
+  # 因为aaron这个用户已经和kube-system这个命名空间绑定
+  # 为了让这个用户能访问kube-system,Role也需要定义在kube-system这个命名空间下
+  namespace: kube-system
+# 给Role指定操作权限规则
+rules:
+# Pod属于core这个API Group, Deployment和ReplicaSet属于apps这个API Group
+# 如果是属于core这个API Group, 注意要用空字符表示这个apiGroups.
+# 如果写成["core", "apps"], 用户将不会有操作Pod的权限
+- apiGroups: ["", "apps"]
+  resources: ["pods", "deployments", "replicasets"]
+  # 定义具有哪些操作权限， patch表示更新一部分
+  # verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # 如果具有所有权限,可以直接写为 ["*"]
+  verbs: ["*"]
