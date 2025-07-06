@@ -404,7 +404,7 @@ http://192.168.32.101:30216/
 
 
 
-新版本: 如果勾选了 Use local time 就是使用本店电脑时间,如果未勾选就是使用 UTC 时间
+新版本: 如果勾选了 Use local time 就是使用本地电脑时间,如果未勾选就是使用 UTC 时间
 
 ![](images/2DA8DAC0028E4F9EA5DC8D4AAADC3BFFclipboard.png)
 
